@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hobby Tracker — Auto Sync</title>
+  <meta name="description" content="Hobby tracker that auto-syncs across devices using Firebase Realtime Database. Anonymous sign-in; share a Sync Key to link devices.">
+  <style>
+    :root{--bg:#0b0b0c;--panel:#0f0f10;--text:#f6f7fb;--muted:#9aa3b2;--border:#1f2937;--accent:#3b82f6;--accent-2:#2563eb;--okay:#10b981;--okay-2:#059669;--danger:#ef4444;--danger-2:#dc2626;--chip:#15161a;--chip-2:#1b1c20}
+    @media (prefers-color-scheme: light){:root{--bg:#fafafa;--panel:#ffffff;--text:#111111;--muted:#6b7280;--border:#e5e7eb;--accent:#2563eb;--accent-2:#1d4ed8;--okay:#059669;--okay-2:#047857;--danger:#dc2626;--danger-2:#b91c1c;--chip:#f3f4f6;--chip-2:#eef0f3}}
+    *{box-sizing:border-box}body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji";background:var(--bg);color:var(--text)}
+    .container{max-width:1120px;margin:0 auto;padding:22px 16px 48px}
+    h1{font-weight:650;font-size:28px;margin:0 0 4px}
+    h2{font-weight:650;font-size:20px;margin:16px 0 12px}
+    .sub{color:var(--muted);margin:0 0 16px;font-size:14px}
+    .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-bottom:12px}
+    .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+    .btn{appearance:none;border:1px solid var(--border);background:var(--chip);color:var(--text);padding:8px 12px;border-radius:12px;cursor:pointer;font-size:14px}
+    .btn:hover{filter:brightness(.98)}.btn:active{transform:scale(.98)}
+    .btn-accent{background:var(--accent);color:#fff;border-color:var(--accent-2)}
+    .btn-ok{background:var(--okay);color:#fff;border-color:var(--okay-2)}.btn-danger{background:var(--danger);color:#fff;border-color:var(--danger-2)}
+    .badge{display:inline-flex;gap:8px;align-items:center;padding:6px 10px;border-radius:12px;border:1px solid var(--border);background:var(--panel);font-size:14px}
+    .panel{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:16px}
+    .input{width:100%;background:var(--panel);color:var(--text);border:1px solid var(--border);padding:10px 12px;border-radius:12px;font-size:16px}
+    .grid-7{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+    .dow{font-size:12px;color:var(--muted);text-align:center;padding:6px 0}
+    .day{border-radius:16px;border:1px solid var(--border);overflow:hidden;background:var(--panel)}
+    .day.dim{opacity:.6}
+    .day-head{display:flex;align-items:baseline;justify-content:space-between;padding:6px 8px;font-size:12px;color:var(--muted)}
+    .day-head .today{color:var(--accent);font-weight:600;font-size:11px}
+    .day-body{padding:8px;display:flex;flex-direction:column;gap:6px}
+    .habit-chip{width:100%;text-align:left;padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:var(--chip);font-size:14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer}
+    .habit-chip.done{background:var(--okay);color:#fff;border-color:var(--okay-2)}
+    .cols{display:grid;grid-template-columns:1fr;gap:12px}
+    @media(min-width:640px){.cols{grid-template-columns:1fr 1fr}}
+    @media(min-width:960px){.cols{grid-template-columns:1fr 1fr 1fr}}
+    .summary-card{display:flex;flex-direction:column;gap:10px}
+    .summary-top{display:flex;align-items:flex-start;justify-content:space-between}
+    footer{text-align:center;color:var(--muted);font-size:12px;margin-top:28px}
+    .split{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center}
+    .small{font-size:12px;color:var(--muted)}
+    .pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--border);border-radius:999px;background:var(--panel);font-size:12px}
+    .dot{width:8px;height:8px;border-radius:999px;background:#94a3b8}
+    .dot.ok{background:#10b981}.dot.warn{background:#f59e0b}.dot.err{background:#ef4444}
+    .kbd{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;background:var(--chip-2);border:1px solid var(--border);border-radius:8px;padding:2px 6px}
+    .input-inline{width:220px}
+  </style>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+</head>
+<body>
+  <div class="container">
+    <div class="toolbar">
+      <div>
+        <h1>Hobby Tracker — Auto Sync</h1>
+        <p class="sub">Tap to check off. Saves locally <em>and</em> syncs across devices when online.</p>
+        <p class="small" id="configHint" style="display:none;">⚠ Paste your Firebase config below in the code (search for <span class="kbd">firebaseConfig</span>), then reload.</p>
+      </div>
+      <div class="row">
+        <button class="btn" id="prevBtn" aria-label="Previous month">◀</button>
+        <div class="badge" id="monthLabel">Month YYYY</div>
+        <button class="btn" id="nextBtn" aria-label="Next month">▶</button>
+        <button class="btn btn-accent" id="todayBtn">Today</button>
+      </div>
+    </div>
+
+    <div class="row" style="margin-bottom:10px;justify-content:space-between;">
+      <div class="row">
+        <button class="btn btn-ok" id="markAllBtn">Mark all for today</button>
+        <button class="btn" id="clearTodayBtn">Clear today</button>
+        <button class="btn" id="exportBtn" title="Export all records to CSV">Export CSV</button>
+      </div>
+      <div class="row">
+        <div class="pill"><span class="dot" id="syncDot"></span><span id="syncText">Offline</span></div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-bottom:16px;">
+      <div class="split">
+        <input class="input" id="newHabitInput" placeholder="Add a hobby (e.g., Practice guitar 20m)" />
+        <button class="btn btn-accent" id="addHabitBtn">Add</button>
+        <div class="row">
+          <input class="input input-inline" id="syncKeyInput" placeholder="Sync Key (share across devices)" />
+          <button class="btn" id="setKeyBtn">Link Devices</button>
+        </div>
+      </div>
+      <p class="small" style="margin-top:8px;">
+        Tip: Use the same <strong>Sync Key</strong> on your iPad and Mac to share data. Example: <span class="kbd">my-key-123</span>. Keep it private.
+      </p>
+    </div>
+
+    <div class="grid-7" id="dowRow" aria-hidden="true"></div>
+    <div class="grid-7" id="calendarGrid"></div>
+
+    <section style="margin-top:20px;">
+      <h2>This Month</h2>
+      <div class="cols" id="summaryGrid"></div>
+    </section>
+
+    <footer>Quick Firebase setup guide is inside the file (near the config). Export CSV anytime for backup.</footer>
+  </div>
+
+  <script>
+    // ========= 1) FILL THESE IN WITH YOUR FIREBASE PROJECT CONFIG  =========
+    const firebaseConfig = {
+  apiKey: "AIzaSyCS8vzd1W3f1znbQSm57NZzi4TI59B5HK8",
+  authDomain: "hobby-tracker-929a7.firebaseapp.com",
+  projectId: "hobby-tracker-929a7",
+  storageBucket: "hobby-tracker-929a7.firebasestorage.app",
+  messagingSenderId: "801249891138",
+  appId: "1:801249891138:web:9ecb140548a03644ba6edb",
+  measurementId: "G-5KQV6JZJ51"
+};
+    // =========================================================================
+    // Firebase quick guide:
+    // - Create a project at https://console.firebase.google.com
+    // - Enable Anonymous auth (Authentication → Sign-in method)
+    // - Create a Realtime Database (Build → Realtime Database)
+    // - Rules:
+    // {
+    //   "rules": {
+    //     "hobbyTracker": { "v1": { "$key": { ".read": "auth != null", ".write": "auth != null" } } }
+    //   }
+    // }
+
+    // ---- Utilities ----
+    const fmtYMD=(d)=>d.toISOString().slice(0,10);
+    const startOfDay=(d)=>new Date(d.getFullYear(),d.getMonth(),d.getDate());
+    const addDays=(d,n)=>new Date(d.getFullYear(),d.getMonth(),d.getDate()+n);
+    const startOfMonth=(d)=>new Date(d.getFullYear(),d.getMonth(),1);
+    const endOfMonth=(d)=>new Date(d.getFullYear(),d.getMonth()+1,0);
+    const weekday=(d)=>d.getDay();
+
+    // ---- Local storage ----
+    const STORAGE_KEY="hobby-tracker-v1";
+    const loadState=()=>{try{const raw=localStorage.getItem(STORAGE_KEY);return raw?JSON.parse(raw):null}catch{return null}};
+    const saveState=(s)=>localStorage.setItem(STORAGE_KEY,JSON.stringify(s));
+    const getOrMake=(k,make)=>{const v=localStorage.getItem(k); if(v) return v; const n=make(); localStorage.setItem(k,n); return n;}
+    const CLIENT_ID=getOrMake("HOBBY_CLIENT_ID",()=>Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));
+
+    // ---- Data model ----
+    let state=loadState()||{habits:[{id:"guitar",name:"Practice guitar"},{id:"read",name:"Read"},{id:"run",name:"Run / Move"}],records:{}};
+    let syncKey = localStorage.getItem("HOBBY_SYNC_KEY") || "";
+
+    // ---- Firebase init & auth ----
+    let app, db, auth;
+    function setSyncStatus(kind,text){
+      const syncDot=document.getElementById("syncDot");
+      const syncText=document.getElementById("syncText");
+      syncDot.className = "dot" + (kind==="ok"?" ok": kind==="warn"?" warn": kind==="err"?" err":"");
+      syncText.textContent = text;
+    }
+
+    async function initFirebase(){
+      try{
+        if(firebaseConfig.apiKey.includes("YOUR_")){
+          document.getElementById("configHint").style.display = "block";
+          setSyncStatus("warn","Config needed");
+          return;
+        }
+        app = firebase.initializeApp(firebaseConfig);
+        auth = firebase.auth();
+        db = firebase.database();
+        setSyncStatus("warn","Signing in…");
+        await auth.signInAnonymously();
+        setSyncStatus("ok","Signed in");
+        if(syncKey) attachSync(syncKey);
+      }catch(err){
+        console.error(err);
+        setSyncStatus("err","Firebase error");
+      }
+    }
+
+    function dbRefFor(key){
+      return db.ref(`hobbyTracker/v1/${encodeURIComponent(key)}`);
+    }
+
+    let saveTimer=null;
+    function schedulePush(ref){ if(saveTimer) clearTimeout(saveTimer); saveTimer=setTimeout(()=>pushRemote(ref),400); }
+
+    function applyRemote(remote){
+      const {habits, records} = remote || {};
+      if(habits && Array.isArray(habits)) state.habits = habits;
+      if(records && typeof records === "object") state.records = records;
+      saveState(state);
+      render();
+      setSyncStatus("ok","Synced");
+    }
+
+    async function pushRemote(ref){
+      if(!ref){ if(!syncKey || !db) return; ref = dbRefFor(syncKey); }
+      const payload = { habits: state.habits, records: state.records, meta: { updatedAt: Date.now(), clientId: CLIENT_ID } };
+      try{
+        setSyncStatus("warn","Saving…");
+        await ref.set(payload);
+        setSyncStatus("ok","Synced");
+      }catch(e){
+        console.error(e);
+        setSyncStatus("err","Save failed");
+      }
+    }
+
+    function attachSync(key){
+      if(!db) return;
+      const ref = dbRefFor(key);
+      // initial load
+      ref.once("value").then(snap=>{
+        const remote = snap.val();
+        if(!remote){ pushRemote(ref); } else { applyRemote(remote); }
+      });
+      // live updates
+      ref.on("value",(snap)=>{ const remote=snap.val(); if(remote) applyRemote(remote); });
+    }
+
+    // ---- Calendar helpers ----
+    function monthGrid(date){
+      const start=startOfMonth(date),end=endOfMonth(date);
+      const first=addDays(start,-weekday(start));
+      const last=addDays(end,6-weekday(end));
+      const days=[]; for(let d=new Date(first); d<=last; d=addDays(d,1)) days.push(new Date(d));
+      return days;
+    }
+    function calcTotals(records,habits,monthDates){
+      const totals=Object.fromEntries(habits.map(h=>[h.id,0]));
+      for(const d of monthDates){ const key=fmtYMD(d), day=records[key]||{}; for(const h of habits) if(day[h.id]) totals[h.id]++; }
+      return totals;
+    }
+    function calcCurrentStreak(records,habitId){
+      const today=startOfDay(new Date()); let streak=0;
+      for(let d=new Date(today); ; d=addDays(d,-1)){ const key=fmtYMD(d), done=!!(records[key]&&records[key][habitId]); if(done) streak++; else break; }
+      return streak;
+    }
+
+    // ---- CSV export ----
+    function csvEscape(v){return '\"'+String(v).replace(/\"/g,'\"\"')+'\"'}
+    function exportCSV(){
+      const headers=["Date",...state.habits.map(h=>h.name)];
+      const rows=[headers];
+      const dates=Object.keys(state.records).sort();
+      for(const date of dates){
+        const day=state.records[date]||{};
+        const vals=state.habits.map(h=>day[h.id]?1:0);
+        rows.push([date,...vals]);
+      }
+      const csv=rows.map(r=>r.map(csvEscape).join(",")).join("\r\n");
+      const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
+      const url=URL.createObjectURL(blob);
+      const now=new Date();
+      const y=now.getFullYear(), m=String(now.getMonth()+1).padStart(2,"0"), d=String(now.getDate()).padStart(2,"0");
+      const a=document.createElement("a"); a.href=url; a.download=`hobby-tracker-${y}${m}${d}.csv`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+    }
+
+    // ---- DOM refs ----
+    const monthLabel=document.getElementById("monthLabel");
+    const prevBtn=document.getElementById("prevBtn");
+    const nextBtn=document.getElementById("nextBtn");
+    const todayBtn=document.getElementById("todayBtn");
+    const dowRow=document.getElementById("dowRow");
+    const grid=document.getElementById("calendarGrid");
+    const summaryGrid=document.getElementById("summaryGrid");
+    const addHabitBtn=document.getElementById("addHabitBtn");
+    const newHabitInput=document.getElementById("newHabitInput");
+    const markAllBtn=document.getElementById("markAllBtn");
+    const clearTodayBtn=document.getElementById("clearTodayBtn");
+    const exportBtn=document.getElementById("exportBtn");
+    const setKeyBtn=document.getElementById("setKeyBtn");
+    const syncKeyInput=document.getElementById("syncKeyInput"); syncKeyInput.value = syncKey;
+
+    // ---- Weekdays header ----
+    const DOW=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+    function renderDOW(){ dowRow.innerHTML = DOW.map(w=>`<div class="dow">${w}</div>`).join(""); }
+    renderDOW();
+
+    // ---- UI state ----
+    let uiMonthOffset=0;
+    function setUiMonthOffset(n){ uiMonthOffset=n; render(); }
+
+    // ---- Actions ----
+    function addHabit(){
+      const name=(newHabitInput.value||"").trim(); if(!name) return;
+      const id=name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
+      if(state.habits.some(h=>h.id===id)){ alert("That hobby already exists."); return; }
+      state={...state,habits:[...state.habits,{id,name}]}; saveState(state); newHabitInput.value=""; render();
+      if(syncKey && typeof db !== "undefined") schedulePush();
+    }
+    function removeHabit(id){
+      if(!confirm("Remove this hobby? Your past check-ins will remain.")) return;
+      state={...state,habits:state.habits.filter(h=>h.id!==id)}; saveState(state); render();
+      if(syncKey && typeof db !== "undefined") schedulePush();
+    }
+    function renameHabit(id){
+      const current=state.habits.find(h=>h.id===id);
+      const name=prompt("Rename hobby", current?current.name:""); if(!name) return;
+      state={...state,habits:state.habits.map(h=>h.id===id?{...h,name}:h)}; saveState(state); render();
+      if(syncKey && typeof db !== "undefined") schedulePush();
+    }
+    function toggle(habitId,date){
+      const key=fmtYMD(date); const day={...(state.records[key]||{})};
+      day[habitId]=!day[habitId];
+      state={...state,records:{...state.records,[key]:day}}; saveState(state);
+      render();
+      if(syncKey && typeof db !== "undefined") schedulePush();
+    }
+    function clearDay(date){
+      const key=fmtYMD(date); const next={...state.records}; delete next[key];
+      state={...state,records:next}; saveState(state); render();
+      if(syncKey && typeof db !== "undefined") schedulePush();
+    }
+    function markAllToday(){
+      const today=startOfDay(new Date()); const key=fmtYMD(today);
+      const dayAllTrue=Object.fromEntries(state.habits.map(h=>[h.id,true]));
+      state={...state,records:{...state.records,[key]:dayAllTrue}}; saveState(state); render();
+      if(syncKey && typeof db !== "undefined") schedulePush();
+    }
+
+    // ---- Render ----
+    function render(){
+      const base=new Date(); const viewingDate=new Date(base.getFullYear(),base.getMonth()+uiMonthOffset,1);
+      const days=monthGrid(viewingDate);
+      monthLabel.textContent=viewingDate.toLocaleString(undefined,{month:"long",year:"numeric"});
+
+      const todayKey=fmtYMD(new Date());
+      grid.innerHTML="";
+      for(const d of days){
+        const inMonth=d.getMonth()===viewingDate.getMonth();
+        const isToday=fmtYMD(d)===todayKey;
+        const key=fmtYMD(d);
+        const dayRecs=state.records[key]||{};
+
+        const dayDiv=document.createElement("div");
+        dayDiv.className="day"+(inMonth?"":" dim");
+
+        const head=document.createElement("div");
+        head.className="day-head";
+        head.innerHTML=`<span>${d.getDate()}</span>${isToday?'<span class="today">today</span>':"<span></span>"}`;
+        dayDiv.appendChild(head);
+
+        const body=document.createElement("div");
+        body.className="day-body";
+
+        if(state.habits.length===0){
+          const empty=document.createElement("div");
+          empty.style.color="var(--muted)"; empty.style.fontSize="12px"; empty.textContent="Add a hobby above";
+          body.appendChild(empty);
+        }else{
+          for(const h of state.habits){
+            const checked=!!dayRecs[h.id];
+            const btn=document.createElement("button");
+            btn.className="habit-chip"+(checked?" done":"");
+            btn.setAttribute("aria-pressed", checked?"true":"false");
+            btn.addEventListener("click", ()=>toggle(h.id, d));
+            btn.innerHTML=`<span>${escapeHtml(h.name)}</span><span style="font-size:12px;opacity:.9;">${checked?"✓":"Tap"}</span>`;
+            body.appendChild(btn);
+          }
+        }
+        dayDiv.appendChild(body);
+        grid.appendChild(dayDiv);
+      }
+
+      // Summary
+      const totals=calcTotals(state.records, state.habits, days);
+      summaryGrid.innerHTML="";
+      for(const h of state.habits){
+        const card=document.createElement("div"); card.className="panel summary-card";
+        const streak=calcCurrentStreak(state.records, h.id);
+        card.innerHTML=`
+          <div class="summary-top">
+            <div>
+              <div style="font-weight:600;">${escapeHtml(h.name)}</div>
+              <div style="color:var(--muted);font-size:14px;">${(totals[h.id]||0)}× this month</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="color:var(--muted);font-size:13px;">Streak</div>
+              <div style="font-weight:650;font-size:22px;">${streak}</div>
+            </div>
+          </div>
+          <div class="row">
+            <button class="btn" data-action="rename">Rename</button>
+            <button class="btn btn-danger" data-action="remove">Remove</button>
+          </div>`;
+        card.querySelector('[data-action="rename"]').addEventListener("click", ()=>renameHabit(h.id));
+        card.querySelector('[data-action="remove"]').addEventListener("click", ()=>removeHabit(h.id));
+        summaryGrid.appendChild(card);
+      }
+    }
+
+    function escapeHtml(str){
+      return String(str).replace(/[&<>\"]/g, s => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;" }[s]));
+    }
+
+    // ---- Wire up ----
+    prevBtn.addEventListener("click", ()=>setUiMonthOffset(uiMonthOffset-1));
+    nextBtn.addEventListener("click", ()=>setUiMonthOffset(uiMonthOffset+1));
+    todayBtn.addEventListener("click", ()=>setUiMonthOffset(0));
+    addHabitBtn.addEventListener("click", addHabit);
+    newHabitInput.addEventListener("keydown", (e)=>{ if(e.key==="Enter") addHabit(); });
+    markAllBtn.addEventListener("click", markAllToday);
+    clearTodayBtn.addEventListener("click", ()=>clearDay(new Date()));
+    exportBtn.addEventListener("click", exportCSV);
+    setKeyBtn.addEventListener("click", ()=>{
+      const key = (syncKeyInput.value || "").trim();
+      if(!key){ alert("Enter a Sync Key (letters/numbers/dashes)."); return; }
+      syncKey = key;
+      localStorage.setItem("HOBBY_SYNC_KEY", syncKey);
+      if(typeof db !== "undefined"){ attachSync(syncKey); setSyncStatus("ok","Linked"); }
+      else setSyncStatus("warn","Config needed");
+    });
+
+    render();
+    initFirebase();
+  </script>
+</body>
+</html>
