@@ -105,14 +105,22 @@
 
   <script>
     // ========= 1) FILL THESE IN WITH YOUR FIREBASE PROJECT CONFIG  =========
-    const firebaseConfig = {
+  const firebaseConfig = {
   apiKey: "AIzaSyCS8vzd1W3f1znbQSm57NZzi4TI59B5HK8",
   authDomain: "hobby-tracker-929a7.firebaseapp.com",
+  databaseURL: "https://hobby-tracker-929a7-default-rtdb.firebaseio.com",
   projectId: "hobby-tracker-929a7",
-  storageBucket: "hobby-tracker-929a7.firebasestorage.app",
+  storageBucket: "hobby-tracker-929a7.appspot.com",
   messagingSenderId: "801249891138",
   appId: "1:801249891138:web:9ecb140548a03644ba6edb",
   measurementId: "G-5KQV6JZJ51"
+if (!firebaseConfig.databaseURL || firebaseConfig.apiKey.includes("YOUR_")) {
+  document.getElementById("configHint").style.display = "block";
+  setSyncStatus("warn","Config needed");
+  return;
+}
+  };
+
 };
     // =========================================================================
     // Firebase quick guide:
