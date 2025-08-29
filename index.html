@@ -44,6 +44,33 @@
     .dot.ok{background:#10b981}.dot.warn{background:#f59e0b}.dot.err{background:#ef4444}
     .kbd{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;background:var(--chip-2);border:1px solid var(--border);border-radius:8px;padding:2px 6px}
     .input-inline{width:220px}
+    /* --- Mobile layout tweaks --- */
+@media (max-width: 600px){
+  h1{ font-size:22px; }
+
+  /* Make the 7-day grid horizontally scrollable with wider cells */
+  #dowRow, #calendarGrid{
+    grid-template-columns: repeat(7, 160px); /* try 140–180px to taste */
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 4px;
+    padding-bottom: 6px;
+  }
+  .day{ min-width:160px; }
+  .day-head{ font-size:11px; padding:4px 6px; }
+  .day-body{ padding:6px; gap:6px; }
+
+  /* Compact chips; keep names on one line with ellipsis */
+  .Habit-chip{ padding:8px 10px; font-size:13px; }
+  .Habit-chip .label{
+    display:block;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  /* Hide the small "Tap"/"Undo" hint to save space */
+  .Habit-chip .hint{ display:none; }
+}
   </style>
 
   <!-- c SDKs -->
