@@ -46,7 +46,7 @@
     .input-inline{width:220px}
   </style>
 
-  <!-- Firebase SDKs -->
+  <!-- c SDKs -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
@@ -104,8 +104,8 @@
   </div>
 
   <script>
-    // ========= 1) FILL THESE IN WITH YOUR FIREBASE PROJECT CONFIG  =========
-  const firebaseConfig = {
+// ========= 1) FILL THESE IN WITH YOUR FIREBASE PROJECT CONFIG  =========
+const firebaseConfig = {
   apiKey: "AIzaSyCS8vzd1W3f1znbQSm57NZzi4TI59B5HK8",
   authDomain: "hobby-tracker-929a7.firebaseapp.com",
   databaseURL: "https://hobby-tracker-929a7-default-rtdb.firebaseio.com",
@@ -115,14 +115,7 @@
   appId: "1:801249891138:web:9ecb140548a03644ba6edb",
   measurementId: "G-5KQV6JZJ51"
 };
-if (!firebaseConfig.databaseURL || firebaseConfig.apiKey.includes("YOUR_")) {
-  document.getElementById("configHint").style.display = "block";
-  setSyncStatus("warn","Config needed");
-  return;
-}
-  };
-
-};
+// =========================================================================
     // =========================================================================
     // Firebase quick guide:
     // - Create a project at https://console.firebase.google.com
@@ -165,11 +158,11 @@ if (!firebaseConfig.databaseURL || firebaseConfig.apiKey.includes("YOUR_")) {
 
     async function initFirebase(){
       try{
-        if(firebaseConfig.apiKey.includes("YOUR_")){
-          document.getElementById("configHint").style.display = "block";
-          setSyncStatus("warn","Config needed");
-          return;
-        }
+if (!firebaseConfig.databaseURL || !firebaseConfig.apiKey || firebaseConfig.apiKey.includes("YOUR_")) {
+  document.getElementById("configHint").style.display = "block";
+  setSyncStatus("warn","Config needed");
+  return;
+}
         app = firebase.initializeApp(firebaseConfig);
         auth = firebase.auth();
         db = firebase.database();
